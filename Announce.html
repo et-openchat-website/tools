@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>緊急アナウンス文言生成ツール</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-hover: #3730a3;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-color: #1e293b;
+    --border-color: #cbd5e1;
+    --error-color: #ef4444;
+    
+    /* 選択状態（チップ）の色 */
+    --chip-checked-bg: #2563eb;
+    --chip-checked-text: #ffffff;
+    
+    /* コピーボタンの色 */
+    --copy-color: #0284c7;
+    --copy-hover: #0369a1;
+    
+    /* LINEボタンの色 */
+    --line-color: #06C755;
+    --line-hover: #05963f;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px 12px;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-color);
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s, border 0.2s;
+  }
+
+  .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  /* エラー時の赤枠強調スタイル */
+  .form-group.has-error {
+    border: 2px solid var(--error-color) !important;
+    background-color: #fef2f2;
+  }
+
+  input.has-error, select.has-error {
+    border-color: var(--error-color) !important;
+    background-color: #fef2f2;
+  }
+
+  label.form-label {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #334155;
+  }
+
+  select, input[type="date"], input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #fff;
+    color: var(--text-color);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  select:focus, input[type="date"]:focus, input[type="text"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+  }
+
+  .mode-switch {
+    display: flex;
+    gap: 10px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .mode-btn input {
+    display: none;
+  }
+
+  .mode-btn span {
+    display: block;
+    padding: 12px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+    background-color: #f1f5f9;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mode-btn input[value="禁止"]:checked + span {
+    background-color: #fef2f2;
+    border-color: #ef4444;
+    color: #dc2626;
+  }
+
+  .mode-btn input[value="解除"]:checked + span {
+    background-color: #f0fdf4;
+    border-color: #22c55e;
+    color: #16a34a;
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .chip input {
+    display: none;
+  }
+
+  .chip span {
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background-color: #f1f5f9;
+    color: #475569;
+    transition: all 0.2s ease;
+  }
+
+  .chip:hover span {
+    background-color: #e2e8f0;
+  }
+
+  .chip input:checked + span {
+    background-color: var(--chip-checked-bg);
+    color: var(--chip-checked-text);
+    border-color: var(--chip-checked-bg);
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  }
+
+  .sub-options {
+    margin-top: 10px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+  }
+
+  .btn-generate {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    background-color: var(--primary);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+  }
+
+  .btn-generate:hover {
+    background-color: var(--primary-hover);
+  }
+
+  .btn-generate:active {
+    transform: scale(0.98);
+  }
+
+  .result-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #f8fafc;
+    color: var(--text-color);
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+
+  .action-btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-copy {
+    background-color: var(--copy-color);
+  }
+  .btn-copy:hover {
+    background-color: var(--copy-hover);
+  }
+
+  .btn-line {
+    background-color: var(--line-color);
+  }
+  .btn-line:hover {
+    background-color: var(--line-hover);
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    body {
+      padding: 30px 20px;
+    }
+    header h1 {
+      font-size: 1.8rem;
+    }
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>緊急アナウンス文言生成</h1>
+  </header>
+
+  <div class="card">
+    <div class="form-group">
+      <label class="form-label">アナウンスモード</label>
+      <div class="mode-switch">
+        <label class="mode-btn">
+          <input type="radio" name="mode" value="禁止" checked>
+          <span>🚫 発言禁止モード</span>
+        </label>
+        <label class="mode-btn">
+          <input type="radio" name="mode" value="解除">
+          <span>🟢 発言解禁（解除）モード</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="grid-2col">
+      <div class="form-group" id="groupDate">
+        <label class="form-label">日付</label>
+        <input type="date" id="targetDate">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">対象地域の種類</label>
+        <select id="regionType" onchange="toggleRegionSelect()">
+          <option value="region">地方・地域選択</option>
+          <option value="prefecture">都道府県選択（47都道府県）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group" id="groupRegion">
+      <label class="form-label">対象地域</label>
+      <select id="regionSelect"></select>
+    </div>
+
+    <div class="form-group" id="groupCondition">
+      <label class="form-label">発令種別（複数選択可）</label>
+      <div class="checkbox-group">
+        <label class="chip">
+          <input type="checkbox" id="checkTokubetsu" onchange="toggleTokubetsuOptions()">
+          <span>特別警報</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkAnzen">
+          <span>緊急安全確保</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkJishin" onchange="toggleJishinOptions()">
+          <span>地震</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkOotsunami">
+          <span>大津波警報</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkTsunami">
+          <span>津波警報</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkNankai">
+          <span>南海トラフ地震臨時情報</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkSanriku">
+          <span>北海道・三陸沖後発地震注意情報</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="checkOther" onchange="toggleOtherOption()">
+          <span>その他</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="tokubetsuOptions" class="form-group sub-options hidden">
+      <label class="form-label">特別警報の種別</label>
+      <div class="checkbox-group">
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="大雨特別警報"><span>大雨</span></label>
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="暴風特別警報"><span>暴風</span></label>
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="高潮特別警報"><span>高潮</span></label>
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="波浪特別警報"><span>波浪</span></label>
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="大雪特別警報"><span>大雪</span></label>
+        <label class="chip"><input type="checkbox" class="tokubetsu-detail" value="暴風雪特別警報"><span>暴風雪</span></label>
+      </div>
+    </div>
+
+    <div id="jishinOptions" class="form-group sub-options hidden">
+      <label class="form-label">最大震度</label>
+      <select id="shindoSelect">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5弱">5弱</option>
+        <option value="5強">5強</option>
+        <option value="6弱">6弱</option>
+        <option value="6強">6強</option>
+        <option value="7">7</option>
+      </select>
+    </div>
+
+    <div id="otherOption" class="form-group sub-options hidden">
+      <label class="form-label">その他の内容</label>
+      <input type="text" id="otherInput" placeholder="例: 火山噴火">
+    </div>
+
+    <div class="form-group" id="groupStatus">
+      <label class="form-label">状態（複数選択可）</label>
+      <div class="checkbox-group">
+        <label class="chip"><input type="checkbox" class="status-check" value="発生"><span>発生</span></label>
+        <label class="chip"><input type="checkbox" class="status-check" value="発表"><span>発表</span></label>
+        <label class="chip"><input type="checkbox" class="status-check" value="発令"><span>発令</span></label>
+      </div>
+    </div>
+
+    <button class="btn-generate" onclick="generateText()">文言を生成する</button>
+  </div>
+
+  <div class="card">
+    <div class="result-title">📌 メイン用</div>
+    <textarea id="mainResult" readonly placeholder="「文言を生成する」を押すとここにテキストが表示されます"></textarea>
+    <div class="btn-group">
+      <button class="action-btn btn-copy" onclick="copyToClipboard('mainResult')">コピー</button>
+      <button class="action-btn btn-line" onclick="shareToLine('mainResult')">LINEに共有</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="result-title">💬 雑談用</div>
+    <textarea id="chatResult" readonly placeholder="「文言を生成する」を押すとここにテキストが表示されます"></textarea>
+    <div class="btn-group">
+      <button class="action-btn btn-copy" onclick="copyToClipboard('chatResult')">コピー</button>
+      <button class="action-btn btn-line" onclick="shareToLine('chatResult')">LINEに共有</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const regions = {
+  "【東日本エリア】": [
+    "道東", "道央", "道南", "道北",
+    "北東北地方", "南東北地方", "北関東地方", "南関東地方"
+  ],
+  "【中部エリア】": [
+    "北陸地方", "甲信越地方", "信越地方", "東海地方"
+  ],
+  "【西日本エリア】": [
+    "山陰地方", "山陽地方", "南四国地方", "北九州地方", "南九州地方", "沖縄県"
+  ]
+};
+
+const prefectures = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+];
+
+window.onload = function() {
+  const dateInput = document.getElementById('targetDate');
+  if (dateInput) {
+    dateInput.valueAsDate = new Date();
+  }
+  toggleRegionSelect();
+};
+
+function toggleRegionSelect() {
+  const typeElem = document.getElementById('regionType');
+  const selectElem = document.getElementById('regionSelect');
+  if (!typeElem || !selectElem) return;
+
+  const type = typeElem.value;
+  selectElem.innerHTML = '';
+
+  if (type === 'region') {
+    for (const [group, list] of Object.entries(regions)) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = group;
+      list.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item;
+        option.textContent = item;
+        optgroup.appendChild(option);
+      });
+      selectElem.appendChild(optgroup);
+    }
+  } else {
+    prefectures.forEach(pref => {
+      const option = document.createElement('option');
+      option.value = pref;
+      option.textContent = pref;
+      selectElem.appendChild(option);
+    });
+  }
+}
+
+function toggleTokubetsuOptions() {
+  const checkTokubetsu = document.getElementById('checkTokubetsu');
+  const opt = document.getElementById('tokubetsuOptions');
+  if (!checkTokubetsu || !opt) return;
+
+  const isChecked = checkTokubetsu.checked;
+  opt.classList.toggle('hidden', !isChecked);
+  if (!isChecked) opt.classList.remove('has-error');
+}
+
+function toggleJishinOptions() {
+  const checkJishin = document.getElementById('checkJishin');
+  const opt = document.getElementById('jishinOptions');
+  if (!checkJishin || !opt) return;
+
+  opt.classList.toggle('hidden', !checkJishin.checked);
+}
+
+function toggleOtherOption() {
+  const checkOther = document.getElementById('checkOther');
+  const opt = document.getElementById('otherOption');
+  const input = document.getElementById('otherInput');
+  if (!checkOther || !opt || !input) return;
+
+  const isChecked = checkOther.checked;
+  opt.classList.toggle('hidden', !isChecked);
+  if (!isChecked) {
+    opt.classList.remove('has-error');
+    input.classList.remove('has-error');
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "令和y年mm月dd日";
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const reiwaYear = year - 2018;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `令和${reiwaYear}年${month}月${day}日`;
+}
+
+function clearErrors() {
+  document.querySelectorAll('.has-error').forEach(el => el.classList.remove('has-error'));
+}
+
+function generateText() {
+  clearErrors();
+
+  const dateElem = document.getElementById('targetDate');
+  const dateValue = dateElem ? dateElem.value : "";
+  const regionSelectElem = document.getElementById('regionSelect');
+  const region = regionSelectElem ? regionSelectElem.value : "";
+
+  let firstErrorElem = null;
+
+  // 日付チェック
+  if (!dateValue) {
+    const groupDate = document.getElementById('groupDate');
+    if (groupDate) groupDate.classList.add('has-error');
+    if (dateElem) dateElem.classList.add('has-error');
+    if (!firstErrorElem) firstErrorElem = groupDate;
+  }
+
+  // 地域チェック
+  if (!region) {
+    const groupRegion = document.getElementById('groupRegion');
+    if (groupRegion) groupRegion.classList.add('has-error');
+    if (regionSelectElem) regionSelectElem.classList.add('has-error');
+    if (!firstErrorElem) firstErrorElem = groupRegion;
+  }
+
+  let conditions = [];
+  let isConditionError = false;
+
+  // 特別警報のチェック
+  const checkTokubetsu = document.getElementById('checkTokubetsu');
+  if (checkTokubetsu && checkTokubetsu.checked) {
+    const selectedTokubetsu = Array.from(document.querySelectorAll('.tokubetsu-detail:checked')).map(cb => cb.value);
+    if (selectedTokubetsu.length > 0) {
+      conditions.push(selectedTokubetsu.join('および'));
+    } else {
+      const tokubetsuElem = document.getElementById('tokubetsuOptions');
+      if (tokubetsuElem) {
+        tokubetsuElem.classList.add('has-error');
+        if (!firstErrorElem) firstErrorElem = tokubetsuElem;
+      }
+      isConditionError = true;
+    }
+  }
+
+  const checkAnzen = document.getElementById('checkAnzen');
+  if (checkAnzen && checkAnzen.checked) conditions.push("緊急安全確保");
+
+  const checkJishin = document.getElementById('checkJishin');
+  if (checkJishin && checkJishin.checked) {
+    const shindoElem = document.getElementById('shindoSelect');
+    const shindo = shindoElem ? shindoElem.value : "1";
+    conditions.push(`最大震度${shindo}の地震`);
+  }
+
+  const checkOotsunami = document.getElementById('checkOotsunami');
+  if (checkOotsunami && checkOotsunami.checked) conditions.push("大津波警報");
+
+  const checkTsunami = document.getElementById('checkTsunami');
+  if (checkTsunami && checkTsunami.checked) conditions.push("津波警報");
+
+  const checkNankai = document.getElementById('checkNankai');
+  if (checkNankai && checkNankai.checked) conditions.push("南海トラフ地震臨時情報");
+
+  const checkSanriku = document.getElementById('checkSanriku');
+  if (checkSanriku && checkSanriku.checked) conditions.push("北海道・三陸沖後発地震注意情報");
+
+  // その他のチェック（未入力の場合はエラー）
+  const checkOther = document.getElementById('checkOther');
+  if (checkOther && checkOther.checked) {
+    const otherInputElem = document.getElementById('otherInput');
+    const otherValue = otherInputElem ? otherInputElem.value.trim() : "";
+    if (otherValue !== "") {
+      conditions.push(otherValue);
+    } else {
+      const otherElem = document.getElementById('otherOption');
+      if (otherElem) otherElem.classList.add('has-error');
+      if (otherInputElem) otherInputElem.classList.add('has-error');
+      if (!firstErrorElem) firstErrorElem = otherElem;
+      isConditionError = true;
+    }
+  }
+
+  // 発令種別全体の未選択チェック
+  if (conditions.length === 0 && !isConditionError) {
+    const conditionElem = document.getElementById('groupCondition');
+    if (conditionElem) {
+      conditionElem.classList.add('has-error');
+      if (!firstErrorElem) firstErrorElem = conditionElem;
+    }
+  }
+
+  // 状態チェック
+  const selectedStatuses = Array.from(document.querySelectorAll('.status-check:checked')).map(cb => cb.value);
+  if (selectedStatuses.length === 0) {
+    const statusElem = document.getElementById('groupStatus');
+    if (statusElem) {
+      statusElem.classList.add('has-error');
+      if (!firstErrorElem) firstErrorElem = statusElem;
+    }
+  }
+
+  // エラーが存在する場合
+  if (firstErrorElem) {
+    firstErrorElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    alert("選択されていない箇所があります");
+    return;
+  }
+
+  const modeRadio = document.querySelector('input[name="mode"]:checked');
+  const mode = modeRadio ? modeRadio.value : "禁止";
+  const dateStr = formatDate(dateValue);
+  const conditionText = conditions.join('および');
+  const statusText = selectedStatuses.join('/');
+
+  let mainText = "";
+  let chatText = "";
+
+  if (mode === "禁止") {
+    mainText = `⚠️副官以外の発言禁止⚠️\n\n${dateStr}、${region}において${conditionText}が${statusText}されました。\n\nつきましては、今後は副官としての発言のみとし、情報提供を含む副官以外の発言はお控えくださいますようお願いいたします。`;
+    chatText = `⚠️メイントークルームにおける副官以外の発言禁止⚠️\n\n${dateStr}、${region}において${conditionText}が${statusText}されました。\n\nつきましては、今後はメイントークルームにおける副官としての発言のみとし、情報提供を含む副官以外の発言はお控えくださいますようお願いいたします。`;
+  } else {
+    mainText = `🟩副官以外の発言禁止の解除🟩\n\n${dateStr}、${region}に${statusText}されておりました${conditionText}に伴う「副官以外の発言禁止措置」につきまして、状況の改善を確認したため解除いたします。\n\nこれより通常どおり発言していただいて構いません。\n\nなお、引き続き災害情報や緊急情報の共有にご協力いただき、混乱を招く恐れのある情報の拡散にはご注意ください。\n\nご協力ありがとうございました。`;
+    chatText = `🟩メイントークルームにおける副官以外の発言禁止の解除🟩\n\n${dateStr}、${region}に${statusText}されておりました${conditionText}に伴う「メイントークルームにおける副官以外の発言禁止措置」につきまして、状況の改善を確認したため解除いたします。\n\nこれより通常どおり発言していただいて構いません。\n\nなお、引き続き災害情報や緊急情報の共有にご協力いただき、混乱を招く恐れのある情報の拡散にはご注意ください。\n\nご協力ありがとうございました。`;
+  }
+
+  const mainResult = document.getElementById('mainResult');
+  const chatResult = document.getElementById('chatResult');
+  if (mainResult) mainResult.value = mainText;
+  if (chatResult) chatResult.value = chatText;
+}
+
+function copyToClipboard(elementId) {
+  const textarea = document.getElementById(elementId);
+  if (!textarea) return;
+
+  const text = textarea.value;
+
+  if (!text) {
+    alert("文言が生成されていません");
+    return;
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("コピーしました！");
+    }).catch(() => {
+      fallbackCopy(textarea);
+    });
+  } else {
+    fallbackCopy(textarea);
+  }
+}
+
+function fallbackCopy(element) {
+  element.select();
+  element.setSelectionRange(0, 99999);
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      alert("コピーしました！");
+    } else {
+      alert("コピーに失敗しました。手動で範囲選択してコピーしてください。");
+    }
+  } catch (err) {
+    alert("コピーに失敗しました。手動で範囲選択してコピーしてください。");
+  }
+}
+
+function shareToLine(elementId) {
+  const textarea = document.getElementById(elementId);
+  if (!textarea) return;
+
+  const text = textarea.value;
+
+  if (!text) {
+    alert("文言が生成されていません");
+    return;
+  }
+
+  const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+  window.open(lineUrl, '_blank');
+}
+</script>
+
+</body>
+</html>
